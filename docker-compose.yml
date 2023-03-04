@@ -5,4 +5,6 @@ services:
       context: .
       args:
         - OPENAI_API_KEY=${OPENAI_API_KEY}
+    ports:
+      - "5000:5000"
     command: python bot.py

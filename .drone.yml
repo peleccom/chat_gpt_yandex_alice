@@ -1,0 +1,67 @@
+kind: pipeline
+name: default
+
+steps:
+- name: secret files
+  image: alpine
+  environment:
+      USERNAME:
+        from_secret: docker_username
+      PASSWORD:
+        from_secret: docker_password
+      ENV_FILE_BASE64:
+        from_secret: env_file_base64
+  commands:
+  - echo $ENV_FILE_BASE64 | base64 -d > .env
+
+- name: build&push
+  image: thegeeklab/drone-docker-buildx:23
+  privileged: true
+  environment:
+    GIT_COMMIT: ${DRONE_COMMIT:0:16}
+  settings:
+    username:
+      from_secret: docker_username
+    password:
+      from_secret: docker_password
+    cache_from: registry.gitlab.com/peleccom2/chat_gpt_alice:cache
+    cache_to: registry.gitlab.com/peleccom2/chat_gpt_alice:cache
+    repo: registry.gitlab.com/peleccom2/chat_gpt_alice
+    registry: registry.gitlab.com
+    build_args_from_env:
+      - GIT_COMMIT
+    tags:
+      - latest
+      - ${DRONE_COMMIT:0:16}
+    platforms:
+      - linux/arm
+
+- name: deploy
+  image: appleboy/drone-ssh
+  environment:
+    DEPLOY_COMPOSE_SERVICE:
+      from_secret: deploy_compose_service
+    COMPOSE_DIR:
+      from_secret: compose_dir
+  settings:
+    host:
+      from_secret: deploy_ssh_host
+    username:
+      from_secret: deploy_ssh_username
+    key:
+      from_secret: deploy_ssh_key
+    passphrase:
+      from_secret: deploy_ssh_passphrase
+    envs:
+      - deploy_compose_service
+      - compose_dir
+    command_timeout: 20m
+    script:
+      - export COMPOSE_SERVICE=$${DEPLOY_COMPOSE_SERVICE}
+      - export COMPOSE_DIR=$${COMPOSE_DIR}
+      - cd $COMPOSE_DIR
+      - /bin/bash ./deploy/deploy.sh
+
+trigger:
+  branch:
+  - master
