@@ -1,0 +1,8 @@
+version: '3'
+services:
+  bot:
+    build:
+      context: .
+      args:
+        - OPENAI_API_KEY=${OPENAI_API_KEY}
+    command: python bot.py
