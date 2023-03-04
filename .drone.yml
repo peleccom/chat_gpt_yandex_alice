@@ -32,7 +32,6 @@ steps:
       - GIT_COMMIT
     tags:
       - latest
-      - ${DRONE_COMMIT:0:16}
     platforms:
       - linux/arm
 

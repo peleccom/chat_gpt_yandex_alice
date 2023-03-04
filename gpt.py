@@ -2,18 +2,18 @@ import os
 
 import openai
 
-
 OPENAI_API_KEY = os.environ['OPENAI_API_KEY']
-
-def query(message, prev_messages=None):
+async def aquery(message, prev_messages=None):
+    messages = []
     if not prev_messages:
-        messages = []
+        all_messages = []
     else:
-        messages = prev_messages
+        all_messages = prev_messages.copy()
+    all_messages.append(message)
+    for m in all_messages:
+        messages.append({"role": "user", "content": m})
 
-
-    messages.append({"role": "user", "content": message})
-    chat = openai.ChatCompletion.create(model="gpt-3.5-turbo", messages = messages)
+    chat = await openai.ChatCompletion.acreate(model="gpt-3.5-turbo", messages = messages)
     reply = chat.choices[0].message.content
     reply = reply.strip()
-    return reply, messages
+    return reply

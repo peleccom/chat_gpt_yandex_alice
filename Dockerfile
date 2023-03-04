@@ -1,13 +1,12 @@
-FROM python:3.8-alpine
+FROM python:3.9-slim
 WORKDIR /app
 
-RUN apk update && apk add build-base
+# RUN apk update && apk add gcc musl-dev
+RUN printf "[global] \n extra-index-url=https://www.piwheels.org/simple" > /etc/pip.conf
 
 COPY requirements.txt requirements.txt
-RUN pip3 install -r requirements.txt
+RUN MAKEFLAGS=-j$(nproc) pip3 install -r requirements.txt
 
 COPY . .
-ARG OPENAI_API_KEY # you could give this a default value as well
-ENV OPENAI_API_KEY=$OPENAI_API_KEY
 ENV PYTHONUNBUFFERED=1
-CMD [ "python3", "bot.py"]
+CMD [ "uvicorn", "main:app", "--host",  "0.0.0.0", "--port",  "5000" ]
