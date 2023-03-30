@@ -1,4 +1,4 @@
-# GhatGPT навык для Алисы от Яндекса 
+# GhatGPT навык для Алисы от Яндекса
 
 # Описание
 
@@ -6,23 +6,39 @@
 
 # Инструкции по установке и использованию
 
-Установка
-Склонируйте репозиторий на свой компьютер:
+## Установка
 
-    git clone https://github.com/username/ChatGPT-Alice-Skill.git
+* Склонируйте репозиторий на свой компьютер:
 
-Получите API_KEY на сайте https://openai.com
+      git clone https://github.com/peleccom/chat_gpt_yandex_alice.git
 
-Сохраните его в .env файле в корне проекта 
+* Получите API_KEY в профиле на сайте openai https://platform.openai.com/account/api-keys
+
+* Сохраните его в .env файле в корне проекта
     OPENAI_API_KEY={YOUR_KEY}
-Запустите проект
 
-    docker-compose up
+* Запустите проект
+
+      docker-compose up
 
 
-Подключите навык к Алисе
+* Подключите навык к Алисе
+
+
+## Локальное тестирование
+
+Установите утилиту [alice-nearby](https://github.com/azzzak/alice-nearby)
+
+
+Запустите ее указав webhook на localhost
+
+    ./alice-nearby --webhook=http://localhost:5000/post --port=3456
+
+
+Откройте `http://localhost:3456` в браузере
 
 # Ссылки
+
 OpenAI API: https://openai.com/api/
 
 Документация по API Алисы: https://yandex.ru/dev/dialogs/alice/doc/

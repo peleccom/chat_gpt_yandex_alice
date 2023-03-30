@@ -56,7 +56,6 @@ async def handle_dialog(res,req):
                 res['response']['tts'] = reply + '<speaker audio="alice-sounds-things-door-2.opus">'
                 session_state['message'] = request
         else:
-            await asyncio.sleep(1)
             old_request = session_state['message']
             if old_request not in answers:
                 reply = 'Ответ пока не готов, спросите позже'
