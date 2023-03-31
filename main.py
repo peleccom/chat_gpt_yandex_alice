@@ -1,17 +1,17 @@
 import asyncio
 import traceback
-from typing import Union
 from fastapi import FastAPI, Request
-
+import gpt
 import datetime
 from dotenv import load_dotenv
+
 load_dotenv()
-import gpt
 
 app = FastAPI()
 answers = dict()
 
 CUT_WORD = ['Алиса', 'алиса']
+
 
 @app.post("/post")
 async def post(request: Request):
@@ -24,24 +24,24 @@ async def post(request: Request):
             'end_session': False
         }
     }
-    ## Заполняем необходимую информацию
+    # Заполняем необходимую информацию
     await handle_dialog(response, request)
     print(response)
     return response
 
-async def handle_dialog(res,req):
+
+async def handle_dialog(res, req):
     print('start handle:', datetime.datetime.now(tz=None))
     print(req)
     if req['request']['original_utterance']:
         session_state = res.get('session_state', {})
-        ## Проверяем, есть ли содержимое
+        # Проверяем, есть ли содержимое
         messages = session_state.get('messages', [])
         request = req['request']['original_utterance']
         for word in CUT_WORD:
             if request.startswith(word):
                 request = request[len(word):]
         request = request.strip()
-
 
         if 'message' not in session_state:
             task = asyncio.create_task(ask(request, messages))
@@ -68,18 +68,18 @@ async def handle_dialog(res,req):
                 reply = f'Отвечаю на предыдущий вопрос "{old_request}"\n {answer}'
     else:
         reply = 'Я умный chat бот. Спроси что-нибудь'
-        ## Если это первое сообщение — представляемся
+        # Если это первое сообщение — представляемся
     res['response']['text'] = reply
     print('end handle:', datetime.datetime.now(tz=None))
+
 
 async def ask(request, messages):
     try:
         reply = await gpt.aquery(request, messages)
     except Exception as e:
+        print(f"Smth error: {e}")
         traceback.print_exc()
         reply = 'Не удалось получить ответ'
     answers[request] = reply
     print('get response from gpt:', datetime.datetime.now(tz=None))
     return reply
-
-
