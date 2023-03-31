@@ -38,7 +38,8 @@ async def handle_dialog(res,req):
         messages = session_state.get('messages', [])
         request = req['request']['original_utterance']
         for word in CUT_WORD:
-            request = request.lstrip(word)
+            if request.startswith(word):
+                request = request[len(word):]
         request = request.strip()
 
 
