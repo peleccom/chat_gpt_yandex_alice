@@ -13,13 +13,14 @@ answers = dict()
 
 CUT_WORD = ['Алиса', 'алиса']
 
+users_state = dict()
+
 @app.post("/post")
 async def post(request: Request):
     request = await request.json()
     response = {
         'session': request['session'],
         'version': request['version'],
-        'session_state': request.get('state', {}).get('session', {}),
         'response': {
             'end_session': False
         }
@@ -32,8 +33,19 @@ async def post(request: Request):
 async def handle_dialog(res,req):
     print('start handle:', datetime.datetime.now(tz=None))
     print(req)
+    session_id = req['session'].get('session_id')
+    print('userid', session_id)
+    if session_id and not session_id in users_state:
+        users_state[session_id] = {
+            'messages': [],
+        }
+
+    if session_id:
+        session_state = users_state[session_id]
+    else:
+        session_state = {}
+
     if req['request']['original_utterance']:
-        session_state = res.get('session_state', {})
         ## Проверяем, есть ли содержимое
         messages = session_state.get('messages', [])
         request = req['request']['original_utterance']
