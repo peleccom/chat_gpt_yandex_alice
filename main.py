@@ -93,5 +93,3 @@ async def ask(request, messages):
     answers[request] = reply
     print('get response from gpt:', datetime.datetime.now(tz=None))
     return reply
-
-
