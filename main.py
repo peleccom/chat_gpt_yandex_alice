@@ -1,13 +1,11 @@
 import asyncio
 import traceback
 from typing import Union
+from chat_providers import aquery
 from fastapi import FastAPI, Request
 
 import datetime
-from dotenv import load_dotenv
 from session import UserSession
-load_dotenv()
-import gpt
 
 app = FastAPI()
 answers = dict()
@@ -26,7 +24,6 @@ async def post(request: Request):
             'end_session': False
         }
     }
-    ## Заполняем необходимую информацию
     await handle_dialog(response, request)
     print(response)
     return response
@@ -55,6 +52,11 @@ async def handle_dialog(res,req):
     else:
         await Dialog.init_chat(request_message, session_state, res)
         ## Если это первое сообщение — представляемся
+    if res['response']['text'] and len(res['response']['text']) > 1024:
+        res['response']['text'] = res['response']['text'][:1024]
+        print(len(res['response']['text']))
+    if 'tts' in res['response'] and len(res['response']['tts']) > 1024:
+        res['response']['tts'][:1024]
     print('end handle:', datetime.datetime.now(tz=None))
 
 class Dialog:
@@ -96,7 +98,7 @@ class Dialog:
 
 async def ask(request, messages):
     try:
-        reply = await gpt.aquery(request, messages)
+        reply = await aquery(request, messages)
     except Exception as e:
         traceback.print_exc()
         reply = 'Не удалось получить ответ'
@@ -104,4 +106,19 @@ async def ask(request, messages):
     print('get response from gpt:', datetime.datetime.now(tz=None))
     return reply
 
+
+def consume_answer(request):
+    answer_info = answers[request]
+    if answer_info['ready']:
+        chunks = answer_info['chunks']
+        chunk = chunks[answer_info['cur_chunk']]
+        last = False
+        if answer_info['cur_chunk'] == len(chunks) - 1:
+            # consumed all
+            del answers[request]
+            last = True
+        else:
+            answer_info['cur_chunk'] += 1
+        return True, chunk, last
+    return False, None, False
 
