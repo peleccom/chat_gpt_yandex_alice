@@ -5,6 +5,7 @@ from fastapi import FastAPI, Request
 
 import datetime
 from dotenv import load_dotenv
+from session import UserSession
 load_dotenv()
 import gpt
 
@@ -35,54 +36,63 @@ async def handle_dialog(res,req):
     print(req)
     session_id = req['session'].get('session_id')
     print('userid', session_id)
-    if session_id and not session_id in users_state:
-        users_state[session_id] = {
-            'messages': [],
-        }
 
-    if session_id:
-        session_state = users_state[session_id]
-    else:
-        session_state = {}
+    session_state = UserSession.get_state(session_id)
+    request_message = req['request']['original_utterance']
 
-    if req['request']['original_utterance']:
-        ## Проверяем, есть ли содержимое
-        messages = session_state.get('messages', [])
-        request = req['request']['original_utterance']
+    ## Проверяем, есть ли содержимое
+    if request_message:
         for word in CUT_WORD:
-            if request.startswith(word):
-                request = request[len(word):]
-        request = request.strip()
+            if request_message.startswith(word):
+                request_message = request_message[len(word):]
+        request_message = request_message.strip()
 
 
         if 'message' not in session_state:
-            task = asyncio.create_task(ask(request, messages))
-            await asyncio.sleep(1)
-            messages.append(request)
-            session_state['messages'] = messages
-            if task.done():
-                reply = task.result()
-                del answers[request]
-            else:
-                print('no response')
-                reply = 'Не успел получить ответ. Спросите позже'
-                res['response']['tts'] = reply + '<speaker audio="alice-sounds-things-door-2.opus">'
-                session_state['message'] = request
+            await Dialog.first_message(request_message, session_state, res)
         else:
-            old_request = session_state['message']
-            if old_request not in answers:
-                reply = 'Ответ пока не готов, спросите позже'
-                res['response']['tts'] = reply + '<speaker audio="alice-sounds-things-door-2.opus">'
-            else:
-                answer = answers[old_request]
-                del answers[old_request]
-                del session_state['message']
-                reply = f'Отвечаю на предыдущий вопрос "{old_request}"\n {answer}'
+            await Dialog.second_message(request_message, session_state, res)
     else:
-        reply = 'Я умный chat бот. Спроси что-нибудь'
+        await Dialog.init_chat(request_message, session_state, res)
         ## Если это первое сообщение — представляемся
-    res['response']['text'] = reply
     print('end handle:', datetime.datetime.now(tz=None))
+
+class Dialog:
+    @staticmethod
+    async def init_chat(request_message , state, res):
+        reply = 'Я умный chat бот. Спроси что-нибудь'
+        res['response']['text'] = reply
+
+    @staticmethod
+    async def first_message(request_message , state, res):
+        task = asyncio.create_task(ask(request_message, state['messages']))
+        await asyncio.sleep(1)
+        state['messages'].append(request_message)
+        if task.done():
+            reply = task.result()
+            res['response']['text'] = reply
+            del answers[request_message]
+        else:
+            print('no response')
+            reply = 'Не успел получить ответ. Спросите позже'
+            res['response']['text'] = reply
+            res['response']['tts'] = reply + '<speaker audio="alice-sounds-things-door-2.opus">'
+            state['message'] = request_message
+
+    @staticmethod
+    async def second_message(request_message , state, res):
+        old_request = state['message']
+        if old_request not in answers:
+            reply = 'Ответ пока не готов, спросите позже'
+            res['response']['text'] = reply
+            res['response']['tts'] = reply + '<speaker audio="alice-sounds-things-door-2.opus">'
+        else:
+            answer = answers[old_request]
+            del answers[old_request]
+            del state['message']
+            reply = f'Отвечаю на предыдущий вопрос "{old_request}"\n {answer}'
+            res['response']['text'] = reply
+
 
 async def ask(request, messages):
     try:
