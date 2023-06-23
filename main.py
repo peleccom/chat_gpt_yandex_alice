@@ -6,6 +6,7 @@ from fastapi import FastAPI, Request
 
 import datetime
 from session import UserSession
+from utils import split_text_to_chunks
 
 app = FastAPI()
 answers = dict()
@@ -44,7 +45,6 @@ async def handle_dialog(res,req):
                 request_message = request_message[len(word):]
         request_message = request_message.strip()
 
-
         if 'message' not in session_state:
             await Dialog.first_message(request_message, session_state, res)
         else:
@@ -67,13 +67,17 @@ class Dialog:
 
     @staticmethod
     async def first_message(request_message , state, res):
-        task = asyncio.create_task(ask(request_message, state['messages']))
+        task = asyncio.create_task(process_answer(request_message, state['messages']))
         await asyncio.sleep(1)
         state['messages'].append(request_message)
         if task.done():
-            reply = task.result()
+            ready, chunk, last = consume_answer(request_message)
+            reply = chunk
             res['response']['text'] = reply
-            del answers[request_message]
+            state['message'] = request_message
+
+            if last:
+                del state['message']
         else:
             print('no response')
             reply = 'Не успел получить ответ. Спросите позже'
@@ -85,15 +89,24 @@ class Dialog:
     async def second_message(request_message , state, res):
         old_request = state['message']
         if old_request not in answers:
+            del state['message']
             reply = 'Ответ пока не готов, спросите позже'
             res['response']['text'] = reply
             res['response']['tts'] = reply + '<speaker audio="alice-sounds-things-door-2.opus">'
+            return
         else:
-            answer = answers[old_request]
-            del answers[old_request]
-            del state['message']
-            reply = f'Отвечаю на предыдущий вопрос "{old_request}"\n {answer}'
-            res['response']['text'] = reply
+            ready, chunk, last = consume_answer(old_request)
+            if not ready:
+                reply = ''
+                res['response']['text'] = reply
+                res['response']['tts'] = reply + '<speaker audio="alice-sounds-things-door-2.opus">'
+                return
+            else:
+                reply = chunk
+                res['response']['text'] = reply
+
+                if last:
+                    del state['message']
 
 
 async def ask(request, messages):
@@ -106,6 +119,33 @@ async def ask(request, messages):
     print('get response from gpt:', datetime.datetime.now(tz=None))
     return reply
 
+
+async def process_answer(request, messages):
+    answer_info = {
+        'ready': False,
+        'cur_chunk': 0,
+        'chunks': [],
+    }
+    answers[request] = answer_info
+
+    MAX_SIZE = 1024
+    answer_reply = await ask(request, messages)
+
+    chunks = split_text_to_chunks(
+        answer_reply,
+        MAX_SIZE,
+        answer_prefix = f'Продолжаю ответ на предыдущий вопрос "{request}"\n',
+        answer_postfix = 'Продолжить?',
+        first_answer_prefix=f'Отвечаю на предыдущий вопрос "{request}"\n',
+    )
+
+    answer_info = {
+        'ready': True,
+        'cur_chunk': 0,
+        'chunks': chunks,
+    }
+    answers[request] = answer_info
+    return answer_info
 
 def consume_answer(request):
     answer_info = answers[request]
@@ -121,4 +161,3 @@ def consume_answer(request):
             answer_info['cur_chunk'] += 1
         return True, chunk, last
     return False, None, False
-
