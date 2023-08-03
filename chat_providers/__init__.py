@@ -13,9 +13,14 @@ def open_ai():
     from .openai import aquery as _aquery
     return _aquery
 
+def gpt4free_you():
+    from .gpt4free_you import aquery as _aquery
+    return _aquery
+
 PROVIDERS_MAP= {
     'DUMMY': dummy,
     'OPEN_AI':  open_ai,
+    'GPT4FREE_YOU': gpt4free_you,
 }
 
 if chat_provider in PROVIDERS_MAP:

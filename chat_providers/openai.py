@@ -8,7 +8,7 @@ async def aquery(message, prev_messages=None):
     if not prev_messages:
         all_messages = []
     else:
-        all_messages = prev_messages.copy()
+        all_messages = [req for req, res in prev_messages]
     all_messages.append(message)
     for m in all_messages:
         messages.append({"role": "user", "content": m})

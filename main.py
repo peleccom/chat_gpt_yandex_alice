@@ -69,7 +69,6 @@ class Dialog:
     async def first_message(request_message , state, res):
         task = asyncio.create_task(process_answer(request_message, state['messages']))
         await asyncio.sleep(1)
-        state['messages'].append(request_message)
         if task.done():
             ready, chunk, last = consume_answer(request_message)
             reply = chunk
@@ -130,6 +129,8 @@ async def process_answer(request, messages):
 
     MAX_SIZE = 1024
     answer_reply = await ask(request, messages)
+
+    messages.append([request, answer_reply])
 
     chunks = split_text_to_chunks(
         answer_reply,

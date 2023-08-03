@@ -3,6 +3,7 @@ WORKDIR /app
 ENV PYTHONUNBUFFERED=1
 ARG PYTHONUNBUFFERED=1
 RUN printf "[global] \n extra-index-url=https://www.piwheels.org/simple" > /etc/pip.conf
+RUN apt update && apt install -y git wget
 
 COPY requirements.txt requirements.txt
 COPY postinstall.sh .
